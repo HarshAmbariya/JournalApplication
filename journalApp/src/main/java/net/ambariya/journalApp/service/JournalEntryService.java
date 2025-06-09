@@ -9,6 +9,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.nio.channels.ScatteringByteChannel;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
@@ -43,12 +44,21 @@ public class JournalEntryService {
     public Optional<JournalEntry> getJournalEntryById(ObjectId id){
         return journalEntryRepository.findById(id);
     }
-    public void deleteJournalEntryById(ObjectId id, String username){
-        User user = userService.findByUserName(username);
-        user.getJournalEntries().removeIf(x -> x.getId().equals(id));
-        userService.saveEntry(user);
-        journalEntryRepository.deleteById(id);
-
+    @Transactional
+    public boolean deleteJournalEntryById(ObjectId id, String username){
+        boolean removed = false;
+        try {
+            User user = userService.findByUserName(username);
+            removed = user.getJournalEntries().removeIf(x -> x.getId().equals(id));
+            if(removed){
+                userService.saveEntry(user);
+                journalEntryRepository.deleteById(id);
+            }
+        }
+        catch (Exception e) {
+            System.out.println(e);
+            throw new RuntimeException("An error occurred while deleting journal entry" , e);
+        }
+        return removed;
     }
-
 }
